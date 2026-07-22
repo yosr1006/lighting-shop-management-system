@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>Sales Invoices</h2>
+
+<form method="GET" action="{{ url_for('sales') }}" id="search-form">
+    <div class="search-bar">
+        <input type="text" name="search_customer" id="search-customer" placeholder="Search by customer name or phone..." value="{{ search_customer }}">
+        <select name="search_status" id="search-status">
+            <option value="">All Statuses</option>
+            <option value="completed" {% if search_status == 'completed' %}selected{% endif %}>Completed</option>
+            <option value="cancelled" {% if search_status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+        </select>
+        <input type="date" name="search_date" id="search-date" value="{{ search_date }}">
+        <a href="{{ url_for('sales') }}" class="btn">Clear</a>
+    </div>
+</form>
+
+<a href="{{ url_for('new_sale') }}" class="btn btn-success" style="margin-bottom:15px; display:inline-block;">+ New Sale</a>
+
+<table>
+    <tr>
+        <th>#</th>
+        <th>Customer</th>
+        <th>Date</th>
+        <th>Total</th>
+        <th>Discount</th>
+        <th>After Discount</th>
+        <th>Payment</th>
+        <th>Status</th>
+        <th>Actions</th>
+    </tr>
+    {% for s in sales %}
+    <tr>
+        <td>{{ s.s_invoice_id }}</td>
+        <td>{{ s.customer_name }}</td>
+        <td>{{ s.invoice_date }}</td>
+        <td>{{ "%.2f"|format(s.total_price) }} EGP</td>
+        <td>
+            {% if s.discount_percentage > 0 %}
+                <span style="color:green; font-weight:bold;">{{ s.discount_percentage }}%</span>
+            {% else %}
+                -
+            {% endif %}
+        </td>
+        <td><strong>{{ "%.2f"|format(s.total_after_discount) }} EGP</strong></td>
+        <td>{{ s.payment_method }}</td>
+        <td>
+            {% if s.invoice_status == 'completed' %}
+                <span style="color:green; font-weight:bold;">Completed</span>
+            {% else %}
+                <span style="color:red; font-weight:bold;">Cancelled</span>
+            {% endif %}
+        </td>
+        <td>
+            <a href="{{ url_for('view_sale', invoice_id=s.s_invoice_id) }}" class="btn">View</a>
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+
+<script>
+    let searchTimer;
+    const form = document.getElementById('search-form');
+
+    document.getElementById('search-customer').addEventListener('input', function () {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(() => form.submit(), 400);
+    });
+
+    document.getElementById('search-status').addEventListener('change', () => form.submit());
+    document.getElementById('search-date').addEventListener('change', () => form.submit());
+</script>
+
+{% endblock %}

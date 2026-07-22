@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>Process Product Return</h2>
+
+<div style="background:#fff3cd; padding:15px; border-radius:8px; margin-bottom:20px; color:#856404;">
+    Returns are only accepted within <strong>14 days</strong> of purchase
+</div>
+
+<form method="POST" style="max-width:520px;" id="return-form">
+
+    <label>Sales Invoice ID</label>
+    <input type="number" name="s_invoice_id" id="invoice-id-input"
+           placeholder="Type the invoice number..." min="1" required autocomplete="off"
+           style="margin-bottom:6px;">
+    <div id="invoice-status" style="font-size:13px; min-height:20px; margin-bottom:14px;"></div>
+    <div id="product-section" style="display:none;">
+        <label>Product</label>
+        <select name="product_code" id="product-select" required style="margin-bottom:6px;">
+            <option value="">-- Select a product --</option>
+        </select>
+        <div id="product-info" style="font-size:13px; min-height:20px; margin-bottom:14px; color:#555;"></div>
+
+        <label>Quantity Returned</label>
+        <input type="number" name="quantity_returned" id="qty-input" min="1" value="1"
+               style="width:120px;" required>
+        <div id="qty-hint" style="font-size:12px; color:#888; margin-top:-10px; margin-bottom:14px;"></div>
+
+        <label>Return Date</label>
+        <input type="date" name="return_date" value="{{ today }}" required>
+
+        <br>
+        <button type="submit" class="btn btn-danger">Process Return</button>
+        <a href="{{ url_for('returns') }}" class="btn" style="margin-left:10px;">Cancel</a>
+    </div>
+
+    <!-- Shown only before invoice is confirmed -->
+    <div id="pre-confirm-cancel" style="margin-top:10px;">
+        <a href="{{ url_for('returns') }}" class="btn">Cancel</a>
+    </div>
+
+</form>
+
+<script>
+    let invoiceTimer;
+
+    const invoiceInput   = document.getElementById('invoice-id-input');
+    const invoiceStatus  = document.getElementById('invoice-status');
+    const productSection = document.getElementById('product-section');
+    const productSelect  = document.getElementById('product-select');
+    const productInfo    = document.getElementById('product-info');
+    const qtyInput       = document.getElementById('qty-input');
+    const qtyHint        = document.getElementById('qty-hint');
+    const preCancel      = document.getElementById('pre-confirm-cancel');
+
+    // When invoice ID changes, look up the invoice
+    invoiceInput.addEventListener('input', function () {
+        clearTimeout(invoiceTimer);
+        const id = this.value.trim();
+
+        // Reset the product section
+        productSection.style.display = 'none';
+        preCancel.style.display = 'block';
+        productSelect.innerHTML = '<option value="">-- Select a product --</option>';
+        productInfo.textContent = '';
+        invoiceStatus.innerHTML = '';
+
+        if (!id) return;
+        invoiceTimer = setTimeout(() => lookupInvoice(id), 500);
+    });
+
+    async function lookupInvoice(id) {
+        invoiceStatus.innerHTML = '<span style="color:#888;">Searching...</span>';
+        try {
+            // 1. Confirm the invoice is valid and returnable
+            const res  = await fetch(`/api/invoice/${encodeURIComponent(id)}`);
+            const data = await res.json();
+
+            if (!data.found) {
+                invoiceStatus.innerHTML =
+                    '<span style="color:#c0392b;">✘ Invoice not found, already cancelled, or already returned.</span>';
+                productSection.style.display = 'none';
+                return;
+            }
+
+            invoiceStatus.innerHTML =
+                `<span style="color:green;">✔ Invoice found — Customer: <strong>${data.customer_name}</strong> | Date: ${data.invoice_date}</span>`;
+
+            // 2. Load the products that were in this invoice
+            const prodRes  = await fetch(`/api/invoice/${encodeURIComponent(id)}/products`);
+            const products = await prodRes.json();
+
+            if (!products.length) {
+                invoiceStatus.innerHTML += ' <span style="color:#c0392b;">(No products found in this invoice)</span>';
+                return;
+            }
+
+            // Populate the product dropdown
+            productSelect.innerHTML = '<option value="">-- Select a product --</option>';
+            products.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value            = p.product_code;
+                opt.textContent      = `${p.product_name} (${p.product_type}) — Qty purchased: ${p.quantity}`;
+                opt.dataset.qty      = p.quantity;
+                opt.dataset.price    = p.unit_price;
+                opt.dataset.name     = p.product_name;
+                productSelect.appendChild(opt);
+            });
+
+            // Show section
+            productSection.style.display = 'block';
+            preCancel.style.display      = 'none';
+
+        } catch (e) {
+            invoiceStatus.innerHTML = '<span style="color:#c0392b;">Error looking up invoice. Please try again.</span>';
+        }
+    }
+
+    // When a product is selected, show its details and cap the return quantity
+    productSelect.addEventListener('change', function () {
+        const opt = this.options[this.selectedIndex];
+        if (!opt.value) {
+            productInfo.textContent = '';
+            qtyHint.textContent     = '';
+            qtyInput.max            = '';
+            return;
+        }
+
+        const maxQty  = parseInt(opt.dataset.qty);
+        const price   = parseFloat(opt.dataset.price);
+        const name    = opt.dataset.name;
+
+        productInfo.innerHTML =
+            `<strong>${name}</strong> — Unit price: ${price.toFixed(2)} EGP — Max returnable: <strong>${maxQty}</strong>`;
+
+        qtyInput.max   = maxQty;
+        qtyInput.value = 1;
+        qtyHint.textContent = `Maximum returnable quantity: ${maxQty}`;
+    });
+
+    // Keep quantity within bounds as user types
+    qtyInput.addEventListener('input', function () {
+        const opt = productSelect.options[productSelect.selectedIndex];
+        if (!opt || !opt.value) return;
+        const max = parseInt(opt.dataset.qty);
+        if (parseInt(this.value) > max) {
+            this.value = max;
+        }
+        if (parseInt(this.value) < 1) {
+            this.value = 1;
+        }
+    });
+</script>
+
+{% endblock %}

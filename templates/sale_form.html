@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>New Sale Invoice</h2>
+
+<form method="POST" style="max-width:750px;" id="sale-form">
+
+    <label>Customer Phone Number</label>
+    <div style="display:flex; gap:10px; align-items:flex-start;">
+        <div style="flex:1;">
+            <input type="text" name="customer_phone" id="customer-phone"
+                   placeholder="Type phone number..." autocomplete="off"
+                   style="margin-bottom:6px;" required>
+            <div id="customer-status" style="font-size:13px; min-height:20px; margin-bottom:8px;"></div>
+        </div>
+    </div>
+
+    <div id="add-customer-panel" style="display:none; background:#f0f8f0; border:1px solid #c3e6cb; border-radius:8px; padding:14px; margin-bottom:14px;">
+        <strong style="color:#155724;">New Customer — add to system</strong>
+        <label style="margin-top:10px;">Customer Name</label>
+        <input type="text" name="new_customer_name" id="new-customer-name" placeholder="Full name...">
+        <p style="font-size:12px; color:#555; margin-top:-8px;">Fill this in to register the customer and create the invoice in one step.</p>
+    </div>
+
+    <label>Invoice Date</label>
+    <input type="date" name="invoice_date" value="{{ today }}" required>
+
+    <label>Payment Method</label>
+    <select name="payment_method" required>
+        <option value="cash">Cash</option>
+        <option value="card">Card</option>
+    </select>
+
+    <h3 style="margin-top:20px;">Products</h3>
+    <table id="products-table">
+        <thead>
+            <tr>
+                <th>Product</th>
+                <th>Unit Price (EGP)</th>
+                <th>Quantity</th>
+                <th>Line Total</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody id="products-tbody">
+            <tr id="row-1">
+                <td>
+                    <select name="product_code[]" onchange="updateRow(this)" required style="margin-bottom:0;">
+                        <option value="">-- Select Product --</option>
+                        {% for p in products %}
+                        <option value="{{ p.product_code }}" data-price="{{ p.selling_price | float }}">
+                            {{ p.product_name }} (Stock: {{ p.stock_quantity }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </td>
+                <td class="unit-price-cell">-</td>
+                <td>
+                    <input type="number" name="quantity[]" min="1" value="1"
+                           style="margin-bottom:0; width:80px;" required
+                           oninput="updateRow(this.closest('tr').querySelector('select'))">
+                </td>
+                <td class="line-total-cell">-</td>
+                <td><button type="button" class="btn btn-danger" onclick="removeRow(this)">Remove</button></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <br>
+    <button type="button" class="btn" onclick="addRow()">+ Add Product</button>
+
+    <br><br>
+    <!-- Live grand total display -->
+    <div id="grand-total-box" style="background:#012466; color:white; padding:14px 20px; border-radius:8px; margin-bottom:16px; font-size:15px;">
+        Grand Total: <strong id="grand-total-display">0.00 EGP</strong>
+        <span id="discount-note" style="margin-left:16px; font-size:13px; opacity:0.85;"></span>
+    </div>
+
+    <div style="background:#f4f6f8; padding:15px; border-radius:8px; margin-bottom:20px;">
+        <strong>Note:</strong> Discount is calculated automatically:
+        <ul style="margin-top:8px; padding-left:20px; margin-bottom:0;">
+            <li>10% if customer's first invoice was 6+ months ago (loyal customer)</li>
+            <li>15% if invoice total is 4,000 EGP or more (bulk buyer)</li>
+            <li>If both apply, only the higher 15% is given</li>
+        </ul>
+    </div>
+
+    <button type="submit" class="btn btn-success">Create Invoice</button>
+    <a href="{{ url_for('sales') }}" class="btn" style="margin-left:10px;">Cancel</a>
+</form>
+
+<script>
+    // Build product price map from server — values are already Python floats via | float filter
+    const productData = {
+        {% for p in products %}
+        "{{ p.product_code }}": {{ p.selling_price | float }},
+        {% endfor %}
+    };
+
+    function updateRow(select) {
+        const row        = select.closest('tr');
+        const priceCell  = row.querySelector('.unit-price-cell');
+        const totalCell  = row.querySelector('.line-total-cell');
+        const qtyInput   = row.querySelector('input[name="quantity[]"]');
+        const price      = productData[select.value];
+        const qty        = parseInt(qtyInput.value) || 1;
+
+        if (price !== undefined) {
+            priceCell.textContent = price.toFixed(2) + ' EGP';
+            totalCell.textContent = (price * qty).toFixed(2) + ' EGP';
+        } else {
+            priceCell.textContent = '-';
+            totalCell.textContent = '-';
+        }
+        updateGrandTotal();
+    }
+
+    function updateGrandTotal() {
+        let total = 0;
+        document.querySelectorAll('#products-tbody tr').forEach(row => {
+            const select = row.querySelector('select[name="product_code[]"]');
+            const qty    = parseInt(row.querySelector('input[name="quantity[]"]').value) || 1;
+            const price  = productData[select.value];
+            if (price !== undefined) total += price * qty;
+        });
+
+        document.getElementById('grand-total-display').textContent = total.toFixed(2) + ' EGP';
+
+        // Show discount hint
+        const noteEl = document.getElementById('discount-note');
+        if (total >= 4000) {
+            noteEl.textContent = '→ 15% bulk discount will apply';
+        } else {
+            noteEl.textContent = '';
+        }
+    }
+
+    let rowCount = 1;
+
+    function buildOptions() {
+        let html = '<option value="">-- Select Product --</option>';
+        {% for p in products %}
+        html += `<option value="{{ p.product_code }}" data-price="{{ p.selling_price | float }}">{{ p.product_name }} (Stock: {{ p.stock_quantity }})</option>`;
+        {% endfor %}
+        return html;
+    }
+
+    function addRow() {
+        rowCount++;
+        const tbody = document.getElementById('products-tbody');
+        const tr = document.createElement('tr');
+        tr.id = 'row-' + rowCount;
+        tr.innerHTML = `
+            <td>
+                <select name="product_code[]" onchange="updateRow(this)" required style="margin-bottom:0;">
+                    ${buildOptions()}
+                </select>
+            </td>
+            <td class="unit-price-cell">-</td>
+            <td>
+                <input type="number" name="quantity[]" min="1" value="1"
+                       style="margin-bottom:0; width:80px;" required
+                       oninput="updateRow(this.closest('tr').querySelector('select'))">
+            </td>
+            <td class="line-total-cell">-</td>
+            <td><button type="button" class="btn btn-danger" onclick="removeRow(this)">Remove</button></td>
+        `;
+        tbody.appendChild(tr);
+    }
+
+    function removeRow(btn) {
+        const tbody = document.getElementById('products-tbody');
+        if (tbody.querySelectorAll('tr').length > 1) {
+            btn.closest('tr').remove();
+            updateGrandTotal();
+        } else {
+            alert('At least one product is required.');
+        }
+    }
+
+    let phoneTimer;
+    const phoneInput = document.getElementById('customer-phone');
+    const statusDiv  = document.getElementById('customer-status');
+    const addPanel   = document.getElementById('add-customer-panel');
+    const nameInput  = document.getElementById('new-customer-name');
+
+    phoneInput.addEventListener('input', function () {
+        clearTimeout(phoneTimer);
+        const phone = this.value.trim();
+        if (!phone) {
+            statusDiv.innerHTML = '';
+            addPanel.style.display = 'none';
+            nameInput.removeAttribute('required');
+            return;
+        }
+        phoneTimer = setTimeout(() => lookupPhone(phone), 500);
+    });
+
+    async function lookupPhone(phone) {
+        try {
+            const res  = await fetch(`/api/customer/${encodeURIComponent(phone)}`);
+            const data = await res.json();
+            if (data.found) {
+                statusDiv.innerHTML = `<span style="color:green;">✔ Found: <strong>${data.name}</strong></span>`;
+                addPanel.style.display = 'none';
+                nameInput.removeAttribute('required');
+                nameInput.value = '';
+            } else {
+                statusDiv.innerHTML = `<span style="color:#c0392b;">✘ Phone not found — fill in the name below to register a new customer</span>`;
+                addPanel.style.display = 'block';
+                nameInput.setAttribute('required', 'required');
+            }
+        } catch (e) {
+            statusDiv.innerHTML = '';
+        }
+    }
+</script>
+
+{% endblock %}

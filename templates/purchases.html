@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>Purchase Invoices</h2>
+
+<div class="search-bar">
+    <input type="text" id="search-supplier" placeholder="Search by supplier name..." value="{{ search_supplier }}" autocomplete="off">
+    <input type="date" id="search-date" value="{{ search_date }}">
+    <button class="btn" onclick="clearSearch()">Clear</button>
+</div>
+
+<a href="{{ url_for('new_purchase') }}" class="btn btn-success" style="margin-bottom:15px; display:inline-block;">+ New Purchase</a>
+
+<table>
+    <thead>
+        <tr>
+            <th>#</th><th>Supplier</th><th>Delivery Date</th>
+            <th>Total Price</th><th>Payment</th><th>Actions</th>
+        </tr>
+    </thead>
+    <tbody id="table-body">
+        {% for p in purchases %}
+        <tr>
+            <td>{{ p.p_invoice_id }}</td>
+            <td>{{ p.supplier_name }}</td>
+            <td>{{ p.delivery_date }}</td>
+            <td><strong>{{ "%.2f"|format(p.total_price) }} EGP</strong></td>
+            <td>{{ p.payment_method }}</td>
+            <td><a href="{{ url_for('view_purchase', invoice_id=p.p_invoice_id) }}" class="btn">View</a></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<script>
+    let timer;
+
+    function search() {
+        clearTimeout(timer);
+        timer = setTimeout(doSearch, 300);
+    }
+
+    async function doSearch() {
+        const supplier = document.getElementById('search-supplier').value;
+        const dt       = document.getElementById('search-date').value;
+        const res = await fetch(
+            `/api/search/purchases?search_supplier=${encodeURIComponent(supplier)}&search_date=${encodeURIComponent(dt)}`
+        );
+        const rows = await res.json();
+        const tbody = document.getElementById('table-body');
+        if (rows.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#999;">No purchases found.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = rows.map(p => `<tr>
+            <td>${p.p_invoice_id}</td>
+            <td>${p.supplier_name}</td>
+            <td>${p.delivery_date}</td>
+            <td><strong>${p.total_price.toFixed(2)} EGP</strong></td>
+            <td>${p.payment_method}</td>
+            <td><a href="/purchases/view/${p.p_invoice_id}" class="btn">View</a></td>
+        </tr>`).join('');
+    }
+
+    function clearSearch() {
+        document.getElementById('search-supplier').value = '';
+        document.getElementById('search-date').value     = '';
+        doSearch();
+    }
+
+    document.getElementById('search-supplier').addEventListener('input', search);
+    document.getElementById('search-date').addEventListener('change', doSearch);
+</script>
+
+{% endblock %}

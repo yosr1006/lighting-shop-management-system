@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>Customers</h2>
+
+<div class="search-bar">
+    <input type="text" id="search-input" placeholder="Search by name or phone..." value="{{ search }}" autocomplete="off">
+    <button class="btn" onclick="clearSearch()">Clear</button>
+</div>
+
+<a href="{{ url_for('add_customer') }}" class="btn btn-success" style="margin-bottom:15px; display:inline-block;">+ Add Customer</a>
+
+<table>
+    <thead>
+        <tr>
+            <th>Phone</th><th>Name</th><th>Total Invoices</th>
+            <th>Total Spent</th><th>First Invoice</th><th>Loyalty</th><th>Actions</th>
+        </tr>
+    </thead>
+    <tbody id="table-body">
+        {% for c in customers %}
+        <tr>
+            <td>{{ c.customer_phone }}</td>
+            <td>{{ c.customer_name }}</td>
+            <td>{{ c.total_invoices }}</td>
+            <td>{{ "%.2f"|format(c.total_spent) }} EGP</td>
+            <td>{{ c.first_invoice if c.first_invoice else '-' }}</td>
+            <td>
+                {% if c.first_invoice %}
+                    {% set days = (now - c.first_invoice).days %}
+                    {% if days >= 180 %}
+                        <span style="color:green;font-weight:bold;">Loyal</span>
+                    {% else %}
+                        <span style="color:gray;">Regular</span>
+                    {% endif %}
+                {% else %}
+                    <span style="color:gray;">No purchases</span>
+                {% endif %}
+            </td>
+            <td>
+                <a href="{{ url_for('edit_customer', phone=c.customer_phone) }}" class="btn">Edit</a>
+                <a href="{{ url_for('delete_customer', phone=c.customer_phone) }}" class="btn btn-danger"
+                   onclick="return confirm('Delete this customer?')">Delete</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<script>
+    let timer;
+
+    function search() {
+        clearTimeout(timer);
+        timer = setTimeout(doSearch, 300);
+    }
+
+    async function doSearch() {
+        const q   = document.getElementById('search-input').value;
+        const res = await fetch(`/api/search/customers?search=${encodeURIComponent(q)}`);
+        const rows = await res.json();
+        const tbody = document.getElementById('table-body');
+        if (rows.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#999;">No customers found.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = rows.map(c => {
+            let loyaltyHtml;
+            if (c.first_invoice) {
+                loyaltyHtml = c.is_loyal
+                    ? `<span style="color:green;font-weight:bold;">Loyal</span>`
+                    : `<span style="color:gray;">Regular</span>`;
+            } else {
+                loyaltyHtml = `<span style="color:gray;">No purchases</span>`;
+            }
+            return `<tr>
+                <td>${c.customer_phone}</td>
+                <td>${c.customer_name}</td>
+                <td>${c.total_invoices}</td>
+                <td>${c.total_spent.toFixed(2)} EGP</td>
+                <td>${c.first_invoice || '-'}</td>
+                <td>${loyaltyHtml}</td>
+                <td>
+                    <a href="/customers/edit/${c.customer_phone}" class="btn">Edit</a>
+                    <a href="/customers/delete/${c.customer_phone}" class="btn btn-danger"
+                       onclick="return confirm('Delete this customer?')">Delete</a>
+                </td>
+            </tr>`;
+        }).join('');
+    }
+
+    function clearSearch() {
+        document.getElementById('search-input').value = '';
+        doSearch();
+    }
+
+    document.getElementById('search-input').addEventListener('input', search);
+</script>
+
+{% endblock %}

@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>Suppliers</h2>
+
+<div class="search-bar">
+    <input type="text" id="search-input" placeholder="Search by name or phone..." value="{{ search }}" autocomplete="off">
+    <button class="btn" onclick="clearSearch()">Clear</button>
+</div>
+
+<a href="{{ url_for('add_supplier') }}" class="btn btn-success" style="margin-bottom:15px; display:inline-block;">+ Add Supplier</a>
+
+<table>
+    <thead>
+        <tr>
+            <th>Phone</th><th>Name</th><th>Address</th>
+            <th>Total Orders</th><th>Total Paid</th><th>Actions</th>
+        </tr>
+    </thead>
+    <tbody id="table-body">
+        {% for s in suppliers %}
+        <tr>
+            <td>{{ s.supplier_phone }}</td>
+            <td>{{ s.supplier_name }}</td>
+            <td>{{ s.supplier_address }}</td>
+            <td>{{ s.total_orders }}</td>
+            <td>{{ "%.2f"|format(s.total_paid) }} EGP</td>
+            <td>
+                <a href="{{ url_for('edit_supplier', phone=s.supplier_phone) }}" class="btn">Edit</a>
+                <a href="{{ url_for('delete_supplier', phone=s.supplier_phone) }}" class="btn btn-danger"
+                   onclick="return confirm('Delete supplier {{ s.supplier_name }}?')">Delete</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<script>
+    let timer;
+
+    function search() {
+        clearTimeout(timer);
+        timer = setTimeout(doSearch, 300);
+    }
+
+    async function doSearch() {
+        const q   = document.getElementById('search-input').value;
+        const res = await fetch(`/api/search/suppliers?search=${encodeURIComponent(q)}`);
+        const rows = await res.json();
+        const tbody = document.getElementById('table-body');
+        if (rows.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#999;">No suppliers found.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = rows.map(s => `<tr>
+            <td>${s.supplier_phone}</td>
+            <td>${s.supplier_name}</td>
+            <td>${s.supplier_address}</td>
+            <td>${s.total_orders}</td>
+            <td>${s.total_paid.toFixed(2)} EGP</td>
+            <td>
+                <a href="/suppliers/edit/${s.supplier_phone}" class="btn">Edit Address</a>
+                <a href="/suppliers/delete/${s.supplier_phone}" class="btn btn-danger"
+                   onclick="return confirm('Delete supplier ${s.supplier_name}?')">Delete</a>
+            </td>
+        </tr>`).join('');
+    }
+
+    function clearSearch() {
+        document.getElementById('search-input').value = '';
+        doSearch();
+    }
+
+    document.getElementById('search-input').addEventListener('input', search);
+</script>
+
+{% endblock %}

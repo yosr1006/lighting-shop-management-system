@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>Product Returns</h2>
+
+<div class="search-bar">
+    <input type="text" id="search-input" placeholder="Search by customer or product name..." value="{{ search }}" autocomplete="off">
+    <button class="btn" onclick="clearSearch()">Clear</button>
+</div>
+
+<a href="{{ url_for('new_return') }}" class="btn btn-danger" style="margin-bottom:15px; display:inline-block;">+ Process Return</a>
+
+<table>
+    <thead>
+        <tr>
+            <th>Return #</th><th>Invoice #</th><th>Customer</th><th>Product</th>
+            <th>Qty Returned</th><th>Original Invoice Date</th><th>Return Date</th><th>Days After Purchase</th>
+        </tr>
+    </thead>
+    <tbody id="table-body">
+        {% for r in returns %}
+        <tr>
+            <td>{{ r.return_id }}</td>
+            <td>{{ r.s_invoice_id }}</td>
+            <td>{{ r.customer_name }}</td>
+            <td>{{ r.product_name }}</td>
+            <td>{{ r.quantity_returned }}</td>
+            <td>{{ r.invoice_date }}</td>
+            <td>{{ r.return_date }}</td>
+            <td>
+                {% set days = (r.return_date - r.invoice_date).days %}
+                <span style="color:{% if days <= 14 %}green{% else %}red{% endif %};font-weight:bold;">
+                    {{ days }} days
+                </span>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<script>
+    let timer;
+
+    function search() {
+        clearTimeout(timer);
+        timer = setTimeout(doSearch, 300);
+    }
+
+    async function doSearch() {
+        const q   = document.getElementById('search-input').value;
+        const res = await fetch(`/api/search/returns?search=${encodeURIComponent(q)}`);
+        const rows = await res.json();
+        const tbody = document.getElementById('table-body');
+        if (rows.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#999;">No returns found.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = rows.map(r => {
+            const invDate  = new Date(r.invoice_date);
+            const retDate  = new Date(r.return_date);
+            const days     = Math.round((retDate - invDate) / 86400000);
+            const dayColor = days <= 14 ? 'green' : 'red';
+            return `<tr>
+                <td>${r.return_id}</td>
+                <td>${r.s_invoice_id}</td>
+                <td>${r.customer_name}</td>
+                <td>${r.product_name}</td>
+                <td>${r.quantity_returned}</td>
+                <td>${r.invoice_date}</td>
+                <td>${r.return_date}</td>
+                <td><span style="color:${dayColor};font-weight:bold;">${days} days</span></td>
+            </tr>`;
+        }).join('');
+    }
+
+    function clearSearch() {
+        document.getElementById('search-input').value = '';
+        doSearch();
+    }
+
+    document.getElementById('search-input').addEventListener('input', search);
+</script>
+
+{% endblock %}

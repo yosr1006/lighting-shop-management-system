@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>{{ action }} Product</h2>
+
+<form method="POST" style="max-width: 500px;">
+
+    <label>Product Code</label>
+<input type="text" name="product_code"
+       value="{{ product.product_code if product else '' }}"
+       {% if action == 'Edit' %}readonly style="background:#f0f0f0; color:#888; cursor:not-allowed;"{% endif %} required>
+
+    <label>Product Name</label>
+    <input type="text" name="product_name"
+           value="{{ product.product_name if product else '' }}" required>
+
+    <label>Product Type</label>
+    <select name="product_type" required>
+        {% for t in ['chandelier','wall clock','wall light','table lamp','floor lamp','bedside lamp'] %}
+        <option value="{{ t }}"
+            {% if product and product.product_type == t %}selected{% endif %}>
+            {{ t|capitalize }}
+        </option>
+        {% endfor %}
+    </select>
+
+    <label>Purchase Price (EGP)</label>
+    <input type="number" name="purchase_price" step="0.01" min="0.01"
+           value="{{ product.purchase_price if product else '' }}" required>
+
+    <label>Stock Quantity</label>
+    <input type="number" name="stock_quantity" min="0"
+           value="{{ product.stock_quantity if product else '' }}" required>
+
+    <br>
+    <button type="submit" class="btn btn-success">{{ action }} Product</button>
+    <a href="{{ url_for('products') }}" class="btn" style="margin-left:10px;">Cancel</a>
+</form>
+
+{% endblock %}

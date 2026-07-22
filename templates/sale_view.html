@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>Sales Invoice #{{ invoice.s_invoice_id }}</h2>
+
+<table style="max-width:500px; margin-bottom:30px;">
+    <tr><th>Customer</th><td>{{ invoice.customer_name }} ({{ invoice.customer_phone }})</td></tr>
+    <tr><th>Date</th><td>{{ invoice.invoice_date }}</td></tr>
+    <tr><th>Payment</th><td>{{ invoice.payment_method }}</td></tr>
+    <tr><th>Status</th><td>
+        {% if invoice.invoice_status == 'completed' %}
+            <span style="color:green; font-weight:bold;">Completed</span>
+        {% else %}
+            <span style="color:red; font-weight:bold;">Cancelled</span>
+        {% endif %}
+    </td></tr>
+    <tr><th>Total Price</th><td>{{ "%.2f"|format(invoice.total_price) }} EGP</td></tr>
+    <tr><th>Discount</th><td>{{ invoice.discount_percentage }}%</td></tr>
+    <tr><th>Total After Discount</th><td><strong>{{ "%.2f"|format(invoice.total_after_discount) }} EGP</strong></td></tr>
+</table>
+
+<h3>Products in This Invoice</h3>
+<table>
+    <tr>
+        <th>Product Code</th>
+        <th>Product Name</th>
+        <th>Type</th>
+        <th>Quantity</th>
+        <th>Unit Price</th>
+        <th>Line Total</th>
+    </tr>
+    {% for d in details %}
+    <tr>
+        <td>{{ d.product_code }}</td>
+        <td>{{ d.product_name }}</td>
+        <td>{{ d.product_type }}</td>
+        <td>{{ d.quantity }}</td>
+        <td>{{ "%.2f"|format(d.unit_price) }} EGP</td>
+        <td>{{ "%.2f"|format(d.quantity * d.unit_price) }} EGP</td>
+    </tr>
+    {% endfor %}
+</table>
+
+<br>
+<a href="{{ url_for('sales') }}" class="btn">← Back to Sales</a>
+{% if invoice.invoice_status == 'completed' %}
+    <a href="{{ url_for('new_return') }}" class="btn btn-danger" style="margin-left:10px;">Process Return</a>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>Products</h2>
+
+<div class="search-bar">
+    <input type="text" id="search-name" placeholder="Search by name..." value="{{ search_name }}" autocomplete="off">
+    <select id="search-type">
+        <option value="">All Types</option>
+        <option value="chandelier"   {% if search_type == 'chandelier'   %}selected{% endif %}>Chandelier</option>
+        <option value="wall clock"   {% if search_type == 'wall clock'   %}selected{% endif %}>Wall Clock</option>
+        <option value="wall light"   {% if search_type == 'wall light'   %}selected{% endif %}>Wall Light</option>
+        <option value="table lamp"   {% if search_type == 'table lamp'   %}selected{% endif %}>Table Lamp</option>
+        <option value="floor lamp"   {% if search_type == 'floor lamp'   %}selected{% endif %}>Floor Lamp</option>
+        <option value="bedside lamp" {% if search_type == 'bedside lamp' %}selected{% endif %}>Bedside Lamp</option>
+    </select>
+    <button class="btn" onclick="clearSearch()">Clear</button>
+</div>
+
+<a href="{{ url_for('add_product') }}" class="btn btn-success" style="margin-bottom:15px; display:inline-block;">+ Add Product</a>
+
+<table>
+    <thead>
+        <tr>
+            <th>Code</th><th>Name</th><th>Type</th>
+            <th>Purchase Price</th><th>Selling Price</th><th>Stock</th><th>Actions</th>
+        </tr>
+    </thead>
+    <tbody id="table-body">
+        {% for p in products %}
+        <tr>
+            <td>{{ p.product_code }}</td>
+            <td>{{ p.product_name }}</td>
+            <td>{{ p.product_type }}</td>
+            <td>{{ "%.2f"|format(p.purchase_price) }} EGP</td>
+            <td>{{ "%.2f"|format(p.selling_price) }} EGP</td>
+            <td style="color:{% if p.stock_quantity == 0 %}red{% elif p.stock_quantity < 5 %}orange{% else %}green{% endif %};font-weight:bold;">
+                {{ p.stock_quantity }}
+            </td>
+            <td>
+                <a href="{{ url_for('edit_product', code=p.product_code) }}" class="btn">Edit</a>
+                <form action="{{ url_for('delete_product', code=p.product_code) }}" method="POST"
+      style="display:inline;"
+      onsubmit="return confirm('Delete this product?')">
+    <button type="submit" class="btn btn-danger">Delete</button>
+</form>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<script>
+    let timer;
+
+    function search() {
+        clearTimeout(timer);
+        timer = setTimeout(doSearch, 300);
+    }
+
+    async function doSearch() {
+        const name = document.getElementById('search-name').value;
+        const type = document.getElementById('search-type').value;
+        const res  = await fetch(`/api/search/products?search_name=${encodeURIComponent(name)}&search_type=${encodeURIComponent(type)}`);
+        const rows = await res.json();
+        const tbody = document.getElementById('table-body');
+        if (rows.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#999;">No products found.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = rows.map(p => {
+    const stockColor = p.stock_quantity === 0 ? 'red' : p.stock_quantity < 5 ? 'orange' : 'green';
+    return `<tr>
+        <td>${p.product_code}</td>
+        <td>${p.product_name}</td>
+        <td>${p.product_type}</td>
+        <td>${p.purchase_price.toFixed(2)} EGP</td>
+        <td>${p.selling_price.toFixed(2)} EGP</td>
+        <td style="color:${stockColor};font-weight:bold;">${p.stock_quantity}</td>
+        <td>
+            <a href="/products/edit/${p.product_code}" class="btn">Edit</a>
+            <form action="/products/delete/${p.product_code}" method="POST"
+                  style="display:inline;"
+                  onsubmit="return confirm('Delete this product?')">
+                <button type="submit" class="btn btn-danger">Delete</button>
+            </form>
+        </td>
+    </tr>`;
+}).join('');
+    }
+
+    function clearSearch() {
+        document.getElementById('search-name').value = '';
+        document.getElementById('search-type').value = '';
+        doSearch();
+    }
+
+    document.getElementById('search-name').addEventListener('input', search);
+    document.getElementById('search-type').addEventListener('change', doSearch);
+</script>
+
+{% endblock %}

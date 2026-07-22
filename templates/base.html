@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Emara Shop</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: Arial, sans-serif; background: #f4f6f8; }
+
+        .navbar {
+            background: #012466;
+            padding: 25px 40px;
+            display: flex;
+            align-items: center;
+            gap: 25px;
+        }
+        .navbar span {
+            color: #f6f6f6;
+            font-size: 24px;
+            font-weight: bold;
+            margin-right: auto;
+        }
+        .navbar a {
+            color: #F0FCFF;
+            text-decoration: none;
+            font-size: 16px;
+        }
+        .navbar a:hover { color: #f0fcff65; }
+
+        .container {
+            width: 90%;
+            margin: 30px auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        h2 { margin-bottom: 20px; color: #012466; }
+        h3 { margin: 20px 0 10px; color: #333; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ddd; padding: 10px 14px; text-align: left; }
+        th { background: #012466; color: white; }
+        tr:nth-child(even) { background: #f9f9f9; }
+
+        .btn {
+            background: #012466;
+            color: white;
+            padding: 7px 14px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 13px;
+            display: inline-block;
+        }
+        .btn:hover { background: #01328c; color: #ffffff; }
+        .btn-danger { background: #c0392b; }
+        .btn-danger:hover { background: #e74c3c; color: white; }
+        .btn-success { background: #1e8449; }
+        .btn-success:hover { background: #27ae60; color: white; }
+
+        .flash {
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        .flash.success { background: #d4edda; color: #155724; }
+        .flash.danger  { background: #f8d7da; color: #721c24; }
+        .flash.warning { background: #fff3cd; color: #856404; }
+        .flash.info    { background: #d1ecf1; color: #0c5460; }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 9px 12px;
+            margin-bottom: 14px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        label { font-size: 14px; font-weight: bold; color: #333; display: block; margin-bottom: 4px; }
+
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .card {
+            background: #012466;
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .card h3 { color: #F0FCFF; font-size: 32px; margin-bottom: 8px; }
+        .card p { font-size: 14px; }
+
+        .search-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .search-bar input, .search-bar select {
+            width: auto;
+            flex: 1;
+            margin-bottom: 0;
+        }
+    </style>
+</head>
+<body>
+
+<div class="navbar">
+    <span>Emara Shop</span>
+    <a href="{{ url_for('dashboard') }}">Dashboard</a>
+    <a href="{{ url_for('products') }}">Products</a>
+    <a href="{{ url_for('customers') }}">Customers</a>
+    <a href="{{ url_for('suppliers') }}">Suppliers</a>
+    <a href="{{ url_for('sales') }}">Sales</a>
+    <a href="{{ url_for('purchases') }}">Purchases</a>
+    <a href="{{ url_for('returns') }}">Returns</a>
+</div>
+
+<div class="container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="flash {{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+</div>
+
+</body>
+</html>

@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>Purchase Invoice <span style="color:#1282A2;">#{{ invoice.p_invoice_id }}</span></h2>
+<p class="page-subtitle">Full details for this purchase order.</p>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:28px;">
+
+    <div style="background:white;border:1px solid rgba(3,64,120,0.08);border-radius:14px;padding:22px;">
+        <h3 style="margin-top:0;margin-bottom:16px;font-size:13px;text-transform:uppercase;letter-spacing:1px;color:#9aa5be;">Supplier Info</h3>
+        <div style="font-size:18px;font-weight:700;color:#001F54;margin-bottom:4px;">{{ invoice.supplier_name }}</div>
+        <div style="font-family:monospace;font-size:13px;color:#7a87a3;margin-bottom:6px;">{{ invoice.supplier_phone }}</div>
+        <div style="font-size:13px;color:#7a87a3;">{{ invoice.supplier_address }}</div>
+    </div>
+
+    <div style="background:white;border:1px solid rgba(3,64,120,0.08);border-radius:14px;padding:22px;">
+        <h3 style="margin-top:0;margin-bottom:16px;font-size:13px;text-transform:uppercase;letter-spacing:1px;color:#9aa5be;">Order Details</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div>
+                <div style="font-size:11px;color:#9aa5be;margin-bottom:2px;">Delivery Date</div>
+                <div style="font-weight:500;">{{ invoice.delivery_date }}</div>
+            </div>
+            <div>
+                <div style="font-size:11px;color:#9aa5be;margin-bottom:2px;">Payment</div>
+                <div style="font-weight:500;">{{ invoice.payment_method|capitalize }}</div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Total bar -->
+<div style="background:linear-gradient(90deg,#034078,#1282A2);border-radius:14px;padding:18px 24px;margin-bottom:24px;display:flex;align-items:center;justify-content:flex-end;">
+    <div style="color:white;">
+        <span style="font-size:13px;opacity:0.7;">Total Price</span>&nbsp;
+        <span style="font-size:24px;font-weight:700;font-family:'Syne',sans-serif;">{{ "%.2f"|format(invoice.total_price) }} EGP</span>
+    </div>
+</div>
+
+<h3>Products in This Order</h3>
+<div class="table-wrap">
+<table>
+    <thead>
+        <tr>
+            <th>Code</th><th>Product Name</th><th>Type</th><th>Qty Ordered</th><th>Unit Price</th><th>Line Total</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for d in details %}
+        <tr>
+            <td><span style="font-family:monospace;font-size:12px;background:#f0f3f8;padding:2px 7px;border-radius:5px;">{{ d.product_code }}</span></td>
+            <td style="font-weight:500;">{{ d.product_name }}</td>
+            <td><span class="badge badge-info">{{ d.product_type }}</span></td>
+            <td>{{ d.quantity_ordered }}</td>
+            <td>{{ "%.2f"|format(d.unit_price) }} EGP</td>
+            <td style="font-weight:600;">{{ "%.2f"|format(d.quantity_ordered * d.unit_price) }} EGP</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+</div>
+
+<div style="margin-top:22px;">
+    <a href="{{ url_for('purchases') }}" class="btn btn-outline">← Back to Purchases</a>
+</div>
+
+{% endblock %}

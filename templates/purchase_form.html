@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>New Purchase Invoice</h2>
+
+<form method="POST" style="max-width:800px;" id="purchase-form">
+
+    <label>Supplier</label>
+    <select name="supplier_phone" required style="margin-bottom:14px;">
+        <option value="">-- Select Supplier --</option>
+        {% for s in suppliers %}
+        <option value="{{ s.supplier_phone }}">
+            {{ s.supplier_name }} ({{ s.supplier_phone }}) — {{ s.supplier_address }}
+        </option>
+        {% endfor %}
+    </select>
+
+    <label>Delivery Date</label>
+    <input type="date" name="delivery_date" value="{{ today }}" required>
+
+    <label>Payment Method</label>
+    <select name="payment_method" required>
+        <option value="cash">Cash</option>
+        <option value="card">Card</option>
+    </select>
+
+    <h3 style="margin-top:24px;">Products Ordered</h3>
+    <table id="products-table">
+        <thead>
+            <tr>
+                <th>Product</th>
+                <th>Unit Price (EGP)</th>
+                <th>Quantity</th>
+                <th>Line Total</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody id="products-tbody">
+            <tr id="row-1">
+                <td>
+                    <select name="product_code[]" onchange="updateRow(this)" required style="margin-bottom:0;">
+                        <option value="">-- Select Product --</option>
+                        {% for p in products %}
+                        <option value="{{ p.product_code }}"
+                                data-purchase="{{ p.purchase_price | float }}">
+                            {{ p.product_name }} ({{ p.product_type }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </td>
+                <td>
+                    <input type="number" name="unit_price[]" class="unit-price-input"
+                           step="0.01" min="0.01" placeholder="0.00" required
+                           style="margin-bottom:0; width:110px;"
+                           oninput="recalcRow(this.closest('tr'))">
+                </td>
+                <td>
+                    <input type="number" name="quantity[]" min="1" value="1"
+                           style="margin-bottom:0; width:80px;" required
+                           oninput="recalcRow(this.closest('tr'))">
+                </td>
+                <td class="line-total-cell" style="font-weight:600;">-</td>
+                <td>
+                    <button type="button" class="btn btn-danger" onclick="removeRow(this)">Remove</button>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    <br>
+    <button type="button" class="btn" onclick="addRow()">+ Add Product</button>
+
+    <br><br>
+    <!-- Live grand total -->
+    <div style="background:#012466; color:white; padding:14px 20px; border-radius:8px; margin-bottom:20px; font-size:15px;">
+        Grand Total: <strong id="grand-total-display">0.00 EGP</strong>
+    </div>
+
+    <button type="submit" class="btn btn-success">Create Purchase Invoice</button>
+    <a href="{{ url_for('purchases') }}" class="btn" style="margin-left:10px;">Cancel</a>
+</form>
+
+<script>
+    // Map product_code → suggested purchase price (for auto-fill convenience)
+    const purchasePrices = {
+        {% for p in products %}
+        "{{ p.product_code }}": {{ p.purchase_price | float }},
+        {% endfor %}
+    };
+
+    // When a product is selected, auto-fill its known purchase price
+    function updateRow(select) {
+        const row        = select.closest('tr');
+        const priceInput = row.querySelector('.unit-price-input');
+        const price      = purchasePrices[select.value];
+        if (price !== undefined) {
+            priceInput.value = price.toFixed(2);
+        } else {
+            priceInput.value = '';
+        }
+        recalcRow(row);
+    }
+
+    // Recalculate the line total for a row and update grand total
+    function recalcRow(row) {
+        const price     = parseFloat(row.querySelector('.unit-price-input').value) || 0;
+        const qty       = parseInt(row.querySelector('input[name="quantity[]"]').value) || 0;
+        const lineTotal = price * qty;
+        row.querySelector('.line-total-cell').textContent =
+            lineTotal > 0 ? lineTotal.toFixed(2) + ' EGP' : '-';
+        updateGrandTotal();
+    }
+
+    function updateGrandTotal() {
+        let total = 0;
+        document.querySelectorAll('#products-tbody tr').forEach(row => {
+            const price = parseFloat(row.querySelector('.unit-price-input').value) || 0;
+            const qty   = parseInt(row.querySelector('input[name="quantity[]"]').value) || 0;
+            total += price * qty;
+        });
+        document.getElementById('grand-total-display').textContent = total.toFixed(2) + ' EGP';
+    }
+
+    function buildProductOptions() {
+        let html = '<option value="">-- Select Product --</option>';
+        {% for p in products %}
+        html += `<option value="{{ p.product_code }}" data-purchase="{{ p.purchase_price | float }}">{{ p.product_name }} ({{ p.product_type }})</option>`;
+        {% endfor %}
+        return html;
+    }
+
+    let rowCount = 1;
+
+    function addRow() {
+        rowCount++;
+        const tbody = document.getElementById('products-tbody');
+        const tr    = document.createElement('tr');
+        tr.id       = 'row-' + rowCount;
+        tr.innerHTML = `
+            <td>
+                <select name="product_code[]" onchange="updateRow(this)" required style="margin-bottom:0;">
+                    ${buildProductOptions()}
+                </select>
+            </td>
+            <td>
+                <input type="number" name="unit_price[]" class="unit-price-input"
+                       step="0.01" min="0.01" placeholder="0.00" required
+                       style="margin-bottom:0; width:110px;"
+                       oninput="recalcRow(this.closest('tr'))">
+            </td>
+            <td>
+                <input type="number" name="quantity[]" min="1" value="1"
+                       style="margin-bottom:0; width:80px;" required
+                       oninput="recalcRow(this.closest('tr'))">
+            </td>
+            <td class="line-total-cell" style="font-weight:600;">-</td>
+            <td>
+                <button type="button" class="btn btn-danger" onclick="removeRow(this)">Remove</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    }
+
+    function removeRow(btn) {
+        const tbody = document.getElementById('products-tbody');
+        if (tbody.querySelectorAll('tr').length > 1) {
+            btn.closest('tr').remove();
+            updateGrandTotal();
+        } else {
+            alert('At least one product is required.');
+        }
+    }
+</script>
+
+{% endblock %}

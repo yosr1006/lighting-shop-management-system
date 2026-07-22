@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>{{ action }} Customer</h2>
+
+<form method="POST" style="max-width: 400px;">
+
+   <label>Phone Number</label>
+<input type="text" name="customer_phone"
+       value="{{ customer.customer_phone if customer else '' }}"
+       {% if action == 'Edit' %}readonly style="background:#f0f0f0; color:#888; cursor:not-allowed;"{% endif %}
+       required>
+
+    <label>Customer Name</label>
+    <input type="text" name="customer_name"
+           value="{{ customer.customer_name if customer else '' }}" required>
+
+    <br>
+    <button type="submit" class="btn btn-success">{{ action }} Customer</button>
+    <a href="{{ url_for('customers') }}" class="btn" style="margin-left:10px;">Cancel</a>
+</form>
+
+{% endblock %}
